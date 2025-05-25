@@ -9,10 +9,12 @@ import {
     IconButton,
     Switch, 
     FormControlLabel, 
-    Divider
+    Divider,
+    Stack
 } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import CloseIcon from '@mui/icons-material/Close';
 
 const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressToggle }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -29,6 +31,7 @@ const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressTogg
                     position: 'absolute',
                     left: isOpen ? 240 : 0,
                     top: 20,
+                    left:10,
                     zIndex: 1200,
                     backgroundColor: 'white',
                     borderRadius: '0 4px 4px 0',
@@ -60,9 +63,28 @@ const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressTogg
                 }}
             >
                 <Box sx={{ p: 2 }}>
-                    <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 500, mb: 3 }}>
-                        Airport Infrastructure
-                    </Typography>
+                    <Stack 
+                        direction="row" 
+                        alignItems="center" 
+                        justifyContent="space-between" 
+                        sx={{ mb: 3 }}
+                    >
+                        <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 500 }}>
+                            Airport Infrastructure
+                        </Typography>
+                        <IconButton 
+                            onClick={toggleDrawer}
+                            size="small"
+                            sx={{ 
+                                color: '#666',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                                }
+                            }}
+                        >
+                            <CloseIcon fontSize="small" />
+                        </IconButton>
+                    </Stack>
 
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="subtitle2" sx={{ mb: 1, color: '#666' }}>
@@ -75,7 +97,7 @@ const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressTogg
                             >
                                 <MenuItem value={2025}>2025 (Latest)</MenuItem>
                                 <MenuItem value={2024}>2024</MenuItem>
-                                <MenuItem value={2023}>2023 (Historical)</MenuItem>
+                                <MenuItem value={2023}>2023</MenuItem>
                             </Select>
                         </FormControl>
                     </Box>
