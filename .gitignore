@@ -8,10 +8,12 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+assets
 dist
 dist-ssr
 *.local
-
+*.mp4
+*.MP4
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

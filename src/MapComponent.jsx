@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Polyline, Circle, useMap, Popup, ZoomControl } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Circle, useMap, Popup, ZoomControl, Marker, CircleMarker } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { Box, Typography, Divider } from '@mui/material';
+import L from 'leaflet';
 import { mockData, superSectionMetadata, pciColor } from './mockData';
 import YearSelector from './components/YearSelector';
+import VideoPlayer from './components/VideoPlayer';
 import 'leaflet/dist/leaflet.css';
 // import 'react-leaflet-cluster/lib/styles.css';
 
@@ -13,6 +15,23 @@ L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Create custom car icon with embedded SVG data URL
+const carIconUrl = 'data:image/svg+xml;base64,' + btoa(`<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="12" width="20" height="10" rx="2" fill="#1976d2"/>
+  <rect x="8" y="14" width="4" height="6" rx="1" fill="#ffffff"/>
+  <rect x="20" y="14" width="4" height="6" rx="1" fill="#ffffff"/>
+  <circle cx="10" cy="22" r="2" fill="#333333"/>
+  <circle cx="22" cy="22" r="2" fill="#333333"/>
+</svg>`);
+
+const customCarIcon = new L.Icon({
+  iconUrl: carIconUrl,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+  popupAnchor: [0, -16],
 });
 
 // Helper function to format dates
@@ -31,12 +50,12 @@ const MapController = ({ selectedYear }) => {
       // Store current zoom and center
       const currentZoom = map.getZoom();
       const currentCenter = map.getCenter();
-      
+
       // After data update, restore the view
       requestAnimationFrame(() => {
         map.setView(currentCenter, currentZoom, { animate: false });
       });
-      
+
       prevYear.current = selectedYear;
     }
   }, [selectedYear, map]);
@@ -48,6 +67,9 @@ function MapComponent({ onZoomChange }) {
   const [currentZoom, setCurrentZoom] = useState(0);
   const [selectedYear, setSelectedYear] = useState(2025);
   const [showDistress, setShowDistress] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+  const [videoPosition, setVideoPosition] = useState(null);
+  const [currentPathCoordinates, setCurrentPathCoordinates] = useState([]);
   const [visibleLayers, setVisibleLayers] = useState({
     superSections: true,
     sections: false
@@ -56,16 +78,16 @@ function MapComponent({ onZoomChange }) {
   // Memoize the current year's data to prevent unnecessary re-renders
   const currentYearData = useMemo(() => mockData[selectedYear], [selectedYear]);
   const { superSections, sections10m, distressPoints } = currentYearData;
-  
+
   // Find the nearest section's condition for each distress point
   const memoizedDistressPoints = useMemo(() => {
     if (!showDistress) return [];
-    
+
     return distressPoints.map(point => {
       // Find the nearest section to get its condition
       const nearestSection = sections10m.find(section => {
         const [lat, lng] = point.position;
-        return section.coordinates.some(coord => 
+        return section.coordinates.some(coord =>
           Math.abs(coord[0] - lat) < 0.0001 && Math.abs(coord[1] - lng) < 0.0001
         );
       });
@@ -110,14 +132,31 @@ function MapComponent({ onZoomChange }) {
     }
   }, [currentZoom]);
 
+  // Get all coordinates from visible sections for the video path
+  useEffect(() => {
+    let allCoords = [];
+    if (visibleLayers.sections && sections10m) {
+      // If zoomed in, use detailed 10m sections
+      allCoords = sections10m.reduce((acc, section) => {
+        return acc.concat(section.coordinates);
+      }, []);
+    } else if (superSections) {
+      // Otherwise use super sections
+      allCoords = superSections.reduce((acc, section) => {
+        return acc.concat(section.coordinates);
+      }, []);
+    }
+    setCurrentPathCoordinates(allCoords);
+  }, [sections10m, superSections, visibleLayers.sections]);
+
   const ZoomHandler = useCallback(() => {
     const map = useMap();
-    
+
     useEffect(() => {
       const handleZoom = () => {
         const zoom = map.getZoom();
         setCurrentZoom(zoom);
-        
+
         if (zoom < 13) {
           onZoomChange(0);
         } else {
@@ -143,24 +182,50 @@ function MapComponent({ onZoomChange }) {
 
   const handleDistressToggle = useCallback((event) => {
     setShowDistress(event.target.checked);
+    if (!event.target.checked) {
+      setShowVideo(false);
+    }
   }, []);
 
+  const handleVideoToggle = useCallback((event) => {
+    setShowVideo(event.target.checked);
+  }, []);
+
+  // Calculate video marker position based on video progress
+  const handleVideoPositionUpdate = useCallback((progress) => {
+    if (!currentPathCoordinates || currentPathCoordinates.length === 0) return;
+
+    const totalPoints = currentPathCoordinates.length;
+    const currentIndex = Math.min(Math.floor((progress / 100) * totalPoints), totalPoints - 1);
+
+    setVideoPosition(currentPathCoordinates[currentIndex]);
+  }, [currentPathCoordinates]);
+
+  // Initialize video position at the start of the path
+  useEffect(() => {
+    if (currentPathCoordinates && currentPathCoordinates.length > 0) {
+      setVideoPosition(currentPathCoordinates[0]);
+    }
+  }, [currentPathCoordinates]);
+
   const yearSelectorComponent = useMemo(() => (
-    <YearSelector 
+    <YearSelector
       selectedYear={selectedYear}
       onYearChange={handleYearChange}
       showDistress={showDistress}
       onDistressToggle={handleDistressToggle}
+      showVideo={showVideo}
+      onVideoToggle={handleVideoToggle}
     />
-  ), [selectedYear, showDistress, handleYearChange, handleDistressToggle]);
+  ), [selectedYear, showDistress, showVideo, handleYearChange, handleDistressToggle, handleVideoToggle]);
 
   return (
-    <Box sx={{ 
-      position: 'absolute', 
-      top: 0, 
-      left: 0, 
-      right: 0, 
-      bottom: 0, 
+    <Box sx={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
       '& .leaflet-control-zoom': {
         position: 'absolute',
         right: '20px',
@@ -168,7 +233,7 @@ function MapComponent({ onZoomChange }) {
       }
     }}>
       {yearSelectorComponent}
-      
+
       <MapContainer
         center={[51.4700, -0.4500]}
         zoom={13}
@@ -183,7 +248,7 @@ function MapComponent({ onZoomChange }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         <ZoomHandler />
-        
+
         {memoizedSuperSections.map((section) => (
           <Polyline
             key={`${section.id}-${selectedYear}`}
@@ -270,7 +335,32 @@ function MapComponent({ onZoomChange }) {
             ))}
           </MarkerClusterGroup>
         )}
+
+        {videoPosition && showVideo && (
+          <CircleMarker
+            center={videoPosition}
+            radius={10}
+            color="black"
+            weight={3}
+            fillColor="white"
+            fillOpacity={1}
+            zIndexOffset={1000}
+          >
+            <Popup>
+              <Typography variant="body2">
+                Current Video Location
+              </Typography>
+            </Popup>
+          </CircleMarker>
+        )}
       </MapContainer>
+
+      {showVideo && (
+        <VideoPlayer
+          onClose={() => setShowVideo(false)}
+          onCarPositionUpdate={handleVideoPositionUpdate}
+        />
+      )}
     </Box>
   );
 }

@@ -47,18 +47,6 @@ export const generateWeightedPCI = (year = 2025, isAirport = false) => {
 const generateBaseSuperSections = () => {
     return [
         {
-            id: 'super-main-road',
-            name: 'Main City Highway',
-            coordinates: [
-                [51.530, -0.142], // Start point
-                [51.528, -0.139],
-                [51.526, -0.136],
-                [51.524, -0.133],
-                [51.522, -0.130]  // End point
-            ],
-            type: 'road'
-        },
-        {
             id: 'super-heathrow',
             name: 'Heathrow Airport Complex',
             coordinates: [
@@ -125,10 +113,10 @@ const generate10mSections = (superSection, year) => {
             const baseCondition = generateWeightedPCI(year, isAirport);
             const localVariation = Math.floor(Math.random() * 11) - 5;
             const condition = Math.max(0, Math.min(100, baseCondition + localVariation));
-            
-            sections.push({
+                
+                sections.push({
                 id: `10m-${superSection.id}-${i}-${j}`,
-                parentId: superSection.id,
+                    parentId: superSection.id,
                 coordinates: [
                     [lat, lng],
                     [
@@ -137,13 +125,13 @@ const generate10mSections = (superSection, year) => {
                     ]
                 ],
                 condition,
-                color: pciColor(condition),
+                    color: pciColor(condition),
                 yearOfData: year,
                 lastInspected: new Date(year, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
                 type: superSection.type
-            });
+                });
+            }
         }
-    }
     
     return sections;
 };

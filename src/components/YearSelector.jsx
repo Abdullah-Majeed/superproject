@@ -15,8 +15,9 @@ import {
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import CloseIcon from '@mui/icons-material/Close';
+import VideoCallIcon from '@mui/icons-material/VideoCall';
 
-const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressToggle }) => {
+const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressToggle, showVideo, onVideoToggle }) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleDrawer = () => {
@@ -31,7 +32,7 @@ const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressTogg
                     position: 'absolute',
                     left: isOpen ? 240 : 0,
                     top: 20,
-                    left:10,
+                    left: 10,
                     zIndex: 1200,
                     backgroundColor: 'white',
                     borderRadius: '0 4px 4px 0',
@@ -102,21 +103,42 @@ const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressTogg
                         </FormControl>
                     </Box>
 
-                    <FormControlLabel
-                        control={
-                            <Switch 
-                                checked={showDistress}
-                                onChange={onDistressToggle}
-                                color="primary"
-                                size="small"
+                    <Stack spacing={1}>
+                        <FormControlLabel
+                            control={
+                                <Switch 
+                                    checked={showDistress}
+                                    onChange={onDistressToggle}
+                                    color="primary"
+                                    size="small"
+                                />
+                            }
+                            label={
+                                <Typography variant="body2">
+                                    Show Distress Points
+                                </Typography>
+                            }
+                        />
+
+                        {showDistress && (
+                            <FormControlLabel
+                                control={
+                                    <Switch 
+                                        checked={showVideo}
+                                        onChange={onVideoToggle}
+                                        color="primary"
+                                        size="small"
+                                    />
+                                }
+                                label={
+                                        <Typography variant="body2">
+                                            Show Video Player
+                                        </Typography>
+                                    
+                                }
                             />
-                        }
-                        label={
-                            <Typography variant="body2">
-                                Show Distress Points
-                            </Typography>
-                        }
-                    />
+                        )}
+                    </Stack>
 
                     <Divider sx={{ my: 3 }} />
 
