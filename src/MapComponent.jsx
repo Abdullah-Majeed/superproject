@@ -63,6 +63,23 @@ const MapController = ({ selectedYear }) => {
   return null;
 };
 
+// Map follower component to keep the marker centered
+const MapFollower = ({ position }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (position) {
+      map.panTo(position, { 
+        animate: true,
+        duration: 1,
+        easeLinearity: 0.5
+      });
+    }
+  }, [map, position]);
+
+  return null;
+};
+
 function MapComponent({ onZoomChange }) {
   const [currentZoom, setCurrentZoom] = useState(0);
   const [selectedYear, setSelectedYear] = useState(2025);
@@ -197,7 +214,7 @@ function MapComponent({ onZoomChange }) {
 
     const totalPoints = currentPathCoordinates.length;
     const currentIndex = Math.min(Math.floor((progress / 100) * totalPoints), totalPoints - 1);
-
+    
     setVideoPosition(currentPathCoordinates[currentIndex]);
   }, [currentPathCoordinates]);
 
@@ -337,21 +354,24 @@ function MapComponent({ onZoomChange }) {
         )}
 
         {videoPosition && showVideo && (
-          <CircleMarker
-            center={videoPosition}
-            radius={10}
-            color="black"
-            weight={3}
-            fillColor="white"
-            fillOpacity={1}
-            zIndexOffset={1000}
-          >
-            <Popup>
-              <Typography variant="body2">
-                Current Video Location
-              </Typography>
-            </Popup>
-          </CircleMarker>
+          <>
+            <CircleMarker 
+              center={videoPosition}
+              radius={10}
+              color="black"
+              weight={3}
+              fillColor="white"
+              fillOpacity={1}
+              zIndexOffset={1000}
+            >
+              <Popup>
+                <Typography variant="body2">
+                  Current Video Location
+                </Typography>
+              </Popup>
+            </CircleMarker>
+            <MapFollower position={videoPosition} />
+          </>
         )}
       </MapContainer>
 
