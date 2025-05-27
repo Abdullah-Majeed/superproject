@@ -1,4 +1,18 @@
-export const distressTypes = ['pothole', 'crack', 'rutting', 'raveling', 'bleeding', 'patching', 'edge_cracking'];
+export const distressTypes = [
+    'Pothole',
+    'Crack',
+    'Subsidence/Depression',
+    'Ravelling',
+    'Patch',
+    'Manhole',
+    'Bleeding',
+    'Corrugation/Shoving',
+    'Polished aggregate',
+    'Water bleeding and pumping',
+    'Vegetation',
+    'Edge deterioration',
+    'Crack Seal'
+];
 
 export const pciColor = (score = 0) => {
     if (Math.round(score) >= 0 && Math.round(score) <= 20) return 'red';

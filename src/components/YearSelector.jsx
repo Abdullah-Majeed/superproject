@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { 
-    Box, 
-    FormControl, 
-    Select, 
-    MenuItem, 
-    Typography, 
+import {
+    Box,
+    FormControl,
+    Select,
+    MenuItem,
+    Typography,
     Drawer,
     IconButton,
-    Switch, 
-    FormControlLabel, 
+    Switch,
+    FormControlLabel,
     Divider,
     Stack
 } from '@mui/material';
@@ -16,8 +16,18 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import CloseIcon from '@mui/icons-material/Close';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
+import ImageIcon from '@mui/icons-material/Image';
 
-const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressToggle, showVideo, onVideoToggle }) => {
+const YearSelector = ({
+    selectedYear,
+    onYearChange,
+    showDistress,
+    onDistressToggle,
+    showVideo,
+    onVideoToggle,
+    showImages,
+    onImagesToggle
+}) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const toggleDrawer = () => {
@@ -64,19 +74,19 @@ const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressTogg
                 }}
             >
                 <Box sx={{ p: 2 }}>
-                    <Stack 
-                        direction="row" 
-                        alignItems="center" 
-                        justifyContent="space-between" 
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
                         sx={{ mb: 3 }}
                     >
                         <Typography variant="h6" sx={{ color: '#1976d2', fontWeight: 500 }}>
                             Airport Infrastructure
                         </Typography>
-                        <IconButton 
+                        <IconButton
                             onClick={toggleDrawer}
                             size="small"
-                            sx={{ 
+                            sx={{
                                 color: '#666',
                                 '&:hover': {
                                     backgroundColor: 'rgba(0, 0, 0, 0.04)'
@@ -106,7 +116,7 @@ const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressTogg
                     <Stack spacing={1}>
                         <FormControlLabel
                             control={
-                                <Switch 
+                                <Switch
                                     checked={showDistress}
                                     onChange={onDistressToggle}
                                     color="primary"
@@ -121,22 +131,39 @@ const YearSelector = ({ selectedYear, onYearChange, showDistress, onDistressTogg
                         />
 
                         {showDistress && (
-                            <FormControlLabel
-                                control={
-                                    <Switch 
-                                        checked={showVideo}
-                                        onChange={onVideoToggle}
-                                        color="primary"
-                                        size="small"
-                                    />
-                                }
-                                label={
+                            <>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={showVideo}
+                                            onChange={onVideoToggle}
+                                            color="primary"
+                                            size="small"
+                                        />
+                                    }
+                                    label={
                                         <Typography variant="body2">
                                             Show Video Player
                                         </Typography>
-                                    
-                                }
-                            />
+                                    }
+                                />
+
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={showImages}
+                                            onChange={onImagesToggle}
+                                            color="primary"
+                                            size="small"
+                                        />
+                                    }
+                                    label={
+                                        <Typography variant="body2">
+                                            Show Section Images
+                                        </Typography>
+                                    }
+                                />
+                            </>
                         )}
                     </Stack>
 

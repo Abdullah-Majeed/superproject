@@ -6,7 +6,19 @@ import L from 'leaflet';
 import { mockData, superSectionMetadata, pciColor } from './mockData';
 import YearSelector from './components/YearSelector';
 import VideoPlayer from './components/VideoPlayer';
+import ImageViewer from './components/ImageViewer';
 import 'leaflet/dist/leaflet.css';
+import ss1 from './assets/images/ss1.png'
+import ss2 from './assets/images/ss2.png'
+import ss3 from './assets/images/ss3.png'
+
+import sd1 from './assets/images/sd1.png'
+import sd2 from './assets/images/sd2.png'
+import sd3 from './assets/images/sd3.png'
+
+import sm1 from './assets/images/sm1.png'
+import sm2 from './assets/images/sm2.png'
+import sm3 from './assets/images/sm3.png'
 // import 'react-leaflet-cluster/lib/styles.css';
 
 // Fix for default marker icons in Leaflet
@@ -66,10 +78,10 @@ const MapController = ({ selectedYear }) => {
 // Map follower component to keep the marker centered
 const MapFollower = ({ position }) => {
   const map = useMap();
-  
+
   useEffect(() => {
     if (position) {
-      map.panTo(position, { 
+      map.panTo(position, {
         animate: true,
         duration: 1,
         easeLinearity: 0.5
@@ -80,13 +92,35 @@ const MapFollower = ({ position }) => {
   return null;
 };
 
+// Image sets for each 10m section
+const imageSets = [
+  {
+    stitch: ss1,
+    depth: sd1,
+    mask: sm1
+  },
+  {
+    stitch: ss2,
+    depth: sd2,
+    mask: sm2
+  },
+  {
+    stitch: ss3,
+    depth: sd3,
+    mask: sm3
+  }
+];
+
 function MapComponent({ onZoomChange }) {
   const [currentZoom, setCurrentZoom] = useState(0);
   const [selectedYear, setSelectedYear] = useState(2025);
   const [showDistress, setShowDistress] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [showImages, setShowImages] = useState(false);
   const [videoPosition, setVideoPosition] = useState(null);
   const [currentPathCoordinates, setCurrentPathCoordinates] = useState([]);
+  const [currentImageSet, setCurrentImageSet] = useState(null);
+  const [lastSectionIndex, setLastSectionIndex] = useState(-1);
   const [visibleLayers, setVisibleLayers] = useState({
     superSections: true,
     sections: false
@@ -95,6 +129,12 @@ function MapComponent({ onZoomChange }) {
   // Memoize the current year's data to prevent unnecessary re-renders
   const currentYearData = useMemo(() => mockData[selectedYear], [selectedYear]);
   const { superSections, sections10m, distressPoints } = currentYearData;
+
+  // Get random image set
+  const getRandomImageSet = useCallback(() => {
+    const randomIndex = Math.floor(Math.random() * imageSets.length);
+    return imageSets[randomIndex];
+  }, []);
 
   // Find the nearest section's condition for each distress point
   const memoizedDistressPoints = useMemo(() => {
@@ -214,9 +254,18 @@ function MapComponent({ onZoomChange }) {
 
     const totalPoints = currentPathCoordinates.length;
     const currentIndex = Math.min(Math.floor((progress / 100) * totalPoints), totalPoints - 1);
-    
+
+    // Check if we've moved to a new section (every 10 points represents a new 10m section)
+    const currentSectionIndex = Math.floor(currentIndex / 10);
+    if (currentSectionIndex !== lastSectionIndex) {
+      setLastSectionIndex(currentSectionIndex);
+      if (showImages) {
+        setCurrentImageSet(getRandomImageSet());
+      }
+    }
+
     setVideoPosition(currentPathCoordinates[currentIndex]);
-  }, [currentPathCoordinates]);
+  }, [currentPathCoordinates, lastSectionIndex, showImages, getRandomImageSet]);
 
   // Initialize video position at the start of the path
   useEffect(() => {
@@ -224,6 +273,16 @@ function MapComponent({ onZoomChange }) {
       setVideoPosition(currentPathCoordinates[0]);
     }
   }, [currentPathCoordinates]);
+
+  // Handle images toggle
+  const handleImagesToggle = useCallback((event) => {
+    setShowImages(event.target.checked);
+    if (event.target.checked) {
+      setCurrentImageSet(getRandomImageSet());
+    } else {
+      setCurrentImageSet(null);
+    }
+  }, [getRandomImageSet]);
 
   const yearSelectorComponent = useMemo(() => (
     <YearSelector
@@ -233,8 +292,10 @@ function MapComponent({ onZoomChange }) {
       onDistressToggle={handleDistressToggle}
       showVideo={showVideo}
       onVideoToggle={handleVideoToggle}
+      showImages={showImages}
+      onImagesToggle={handleImagesToggle}
     />
-  ), [selectedYear, showDistress, showVideo, handleYearChange, handleDistressToggle, handleVideoToggle]);
+  ), [selectedYear, showDistress, showVideo, showImages, handleYearChange, handleDistressToggle, handleVideoToggle, handleImagesToggle]);
 
   return (
     <Box sx={{
@@ -355,7 +416,7 @@ function MapComponent({ onZoomChange }) {
 
         {videoPosition && showVideo && (
           <>
-            <CircleMarker 
+            <CircleMarker
               center={videoPosition}
               radius={10}
               color="black"
@@ -379,6 +440,13 @@ function MapComponent({ onZoomChange }) {
         <VideoPlayer
           onClose={() => setShowVideo(false)}
           onCarPositionUpdate={handleVideoPositionUpdate}
+        />
+      )}
+
+      {showImages && currentImageSet && (
+        <ImageViewer
+          imageSet={currentImageSet}
+          onClose={() => setShowImages(false)}
         />
       )}
     </Box>
