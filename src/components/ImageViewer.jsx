@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Paper, Box, IconButton, Typography, Stack } from '@mui/material';
 import Draggable from 'react-draggable';
 import CloseIcon from '@mui/icons-material/Close';
@@ -8,57 +8,116 @@ import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 const ImageViewer = ({ onClose, imageSet }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [size, setSize] = useState({ width: 800, height: 600 });
-  const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(null);
   const containerRef = useRef(null);
-  const resizeRef = useRef(null);
 
-  const handleMouseDown = (e) => {
-    if (e.target === resizeRef.current) {
-      setIsDragging(true);
-      e.preventDefault();
+  const handleMouseDown = (e, direction) => {
+    if (direction) {
+      setIsResizing(direction);
+      e.stopPropagation();
     }
   };
 
   const handleMouseMove = (e) => {
-    if (isDragging) {
-      const container = containerRef.current;
-      const rect = container.getBoundingClientRect();
-      const newWidth = Math.max(400, Math.min(e.clientX - rect.left, window.innerWidth * 0.9));
-      const newHeight = Math.max(300, Math.min(e.clientY - rect.top, window.innerHeight * 0.9));
-      setSize({ width: newWidth, height: newHeight });
+    if (!isResizing || !containerRef.current) return;
+
+    e.preventDefault();
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+
+    let newWidth = size.width;
+    let newHeight = size.height;
+    let deltaX = 0;
+    let deltaY = 0;
+
+    // Handle horizontal resizing
+    if (isResizing.includes('left')) {
+      const proposedWidth = rect.right - e.clientX;
+      if (proposedWidth >= 320 && e.clientX >= 0) {
+        deltaX = e.clientX - rect.left;
+        newWidth = proposedWidth;
+      }
+    } else if (isResizing.includes('right')) {
+      const proposedWidth = e.clientX - rect.left;
+      if (proposedWidth >= 320 && e.clientX <= window.innerWidth) {
+        newWidth = proposedWidth;
+      }
+    }
+
+    // Handle vertical resizing
+    if (isResizing.includes('top')) {
+      const proposedHeight = rect.bottom - e.clientY;
+      if (proposedHeight >= 240 && e.clientY >= 0) {
+        deltaY = e.clientY - rect.top;
+        newHeight = proposedHeight;
+      }
+    } else if (isResizing.includes('bottom')) {
+      const proposedHeight = e.clientY - rect.top;
+      if (proposedHeight >= 240 && e.clientY <= window.innerHeight) {
+        newHeight = proposedHeight;
+      }
+    }
+
+    // Update size
+    setSize({
+      width: newWidth,
+      height: newHeight
+    });
+
+    // Update position using transform
+    if (deltaX !== 0 || deltaY !== 0) {
+      const currentTransform = window.getComputedStyle(container).transform;
+      const matrix = new DOMMatrix(currentTransform);
+      const newX = matrix.m41 + deltaX;
+      const newY = matrix.m42 + deltaY;
+      container.style.transform = `translate(${newX}px, ${newY}px)`;
     }
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    setIsResizing(null);
   };
 
-  React.useEffect(() => {
-    if (isDragging) {
+  useEffect(() => {
+    if (isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = isResizing === 'right' ? 'e-resize' : 
+                                  isResizing === 'bottom' ? 's-resize' : 'se-resize';
+      document.body.style.userSelect = 'none';
+    } else {
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = '';
     }
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = '';
     };
-  }, [isDragging]);
+  }, [isResizing]);
+
+  // Add this effect to initialize transform
+  useEffect(() => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      containerRef.current.style.transform = `translate(${rect.left}px, ${rect.top}px)`;
+      containerRef.current.style.left = '0';
+      containerRef.current.style.top = '0';
+    }
+  }, []);
 
   const toggleFullscreen = () => {
-    if (!isFullscreen) {
-      if (containerRef.current.requestFullscreen) {
-        containerRef.current.requestFullscreen();
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      }
-    }
     setIsFullscreen(!isFullscreen);
+    if (!isFullscreen) {
+      setSize({ width: window.innerWidth, height: window.innerHeight });
+    } else {
+      setSize({ width: 800, height: 600 });
+    }
   };
 
   return (
-    <Draggable handle=".drag-handle" bounds="parent">
+    <Draggable handle=".drag-handle" bounds="parent" disabled={isFullscreen}>
       <Paper
         ref={containerRef}
         elevation={3}
@@ -66,15 +125,19 @@ const ImageViewer = ({ onClose, imageSet }) => {
           position: 'absolute',
           right: '20px',
           top: '80px',
-          width: isFullscreen ? '100%' : size.width,
-          height: isFullscreen ? '100%' : size.height,
+          width: size.width,
+          height: size.height,
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
           borderRadius: '8px',
           overflow: 'hidden',
           zIndex: 1000,
-          cursor: isDragging ? 'se-resize' : 'auto'
+          cursor: 'auto',
+          '&:hover': {
+            '& .resize-handle': {
+              opacity: 1
+            }
+          }
         }}
-        onMouseDown={handleMouseDown}
       >
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Box
@@ -167,25 +230,146 @@ const ImageViewer = ({ onClose, imageSet }) => {
           </Stack>
         </Box>
 
-        {/* Resize handle */}
+        {/* Resize handles - edges */}
         <Box
-          ref={resizeRef}
+          className="resize-handle"
+          onMouseDown={(e) => handleMouseDown(e, 'left')}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '8px',
+            height: '100%',
+            cursor: 'w-resize',
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            '&:hover': {
+              opacity: 1
+            }
+          }}
+        />
+        <Box
+          className="resize-handle"
+          onMouseDown={(e) => handleMouseDown(e, 'right')}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '8px',
+            height: '100%',
+            cursor: 'e-resize',
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            '&:hover': {
+              opacity: 1
+            }
+          }}
+        />
+        <Box
+          className="resize-handle"
+          onMouseDown={(e) => handleMouseDown(e, 'top')}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '8px',
+            cursor: 'n-resize',
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            '&:hover': {
+              opacity: 1
+            }
+          }}
+        />
+        <Box
+          className="resize-handle"
+          onMouseDown={(e) => handleMouseDown(e, 'bottom')}
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: '8px',
+            cursor: 's-resize',
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            '&:hover': {
+              opacity: 1
+            }
+          }}
+        />
+
+        {/* Resize handles - corners */}
+        <Box
+          className="resize-handle"
+          onMouseDown={(e) => handleMouseDown(e, 'top-left')}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '16px',
+            height: '16px',
+            cursor: 'nw-resize',
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            backgroundColor: 'transparent',
+            '&:hover': {
+              opacity: 1
+            }
+          }}
+        />
+        <Box
+          className="resize-handle"
+          onMouseDown={(e) => handleMouseDown(e, 'top-right')}
+          sx={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            width: '16px',
+            height: '16px',
+            cursor: 'ne-resize',
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            backgroundColor: 'transparent',
+            '&:hover': {
+              opacity: 1
+            }
+          }}
+        />
+        <Box
+          className="resize-handle"
+          onMouseDown={(e) => handleMouseDown(e, 'bottom-left')}
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '16px',
+            height: '16px',
+            cursor: 'sw-resize',
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            backgroundColor: 'transparent',
+            '&:hover': {
+              opacity: 1
+            }
+          }}
+        />
+        <Box
+          className="resize-handle"
+          onMouseDown={(e) => handleMouseDown(e, 'bottom-right')}
           sx={{
             position: 'absolute',
             bottom: 0,
             right: 0,
-            width: 20,
-            height: 20,
+            width: '16px',
+            height: '16px',
             cursor: 'se-resize',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              right: 4,
-              bottom: 4,
-              width: 8,
-              height: 8,
-              borderRight: '2px solid #666',
-              borderBottom: '2px solid #666'
+            opacity: 0,
+            transition: 'opacity 0.2s',
+            backgroundColor: 'transparent',
+            '&:hover': {
+              opacity: 1
             }
           }}
         />
